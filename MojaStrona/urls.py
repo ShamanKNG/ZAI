@@ -16,7 +16,13 @@ Including another URLconf
 """
 from MojaStrona import views
 from django.urls import path
+from .views import FilmView
 
 urlpatterns = [
     path('wszystkie/', views.wszystkie),
+]
+
+
+urlpatterns = [
+    path('api/film/', FilmView.as_view(), name='film-api'),
 ]
