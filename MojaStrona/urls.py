@@ -17,12 +17,14 @@ Including another URLconf
 from MojaStrona import views
 from django.urls import path
 from .views import FilmView
-
+from .views import FilmList, FilmRetrieve,FilmCreateList, UserList, UserCreateList
 urlpatterns = [
     path('wszystkie/', views.wszystkie),
-]
-
-
-urlpatterns = [
+    path('filmy/', FilmList.as_view(), name='film-list'),
+    path('filmy/<int:pk>/', FilmRetrieve.as_view(), name='film-detail'),
+    path('filmy/create/', FilmCreateList.as_view(), name='film-create-list'),
     path('api/film/', FilmView.as_view(), name='film-api'),
+    path('userlist/', UserList.as_view(), name='UserList'),
+    path('usercreatelist/', UserCreateList.as_view(), name='UserCreateList')
 ]
+
