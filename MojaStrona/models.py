@@ -1,54 +1,66 @@
-import json
 from django.db import models
+from django.contrib.auth.models import User
+from django.dispatch import receiver
+from django.db.models.signals import post_save
+from django.contrib.auth.models import User
+from rest_framework.authtoken.models import Token
 
-
-# Create your models here.
-# class Film:
-#     def __init__(self, tytul, rezyser, rok_produkcji, ocena, gatunki):
-#         self.tytul = tytul
-#         self.rezyser = rezyser
-#         self.rok_produkcji = rok_produkcji
-#         self.ocena = ocena
-#         self.gatunki = gatunki
-
-
+@receiver(post_save, sender=User)
+def create_auth_token(sender, instance=None, created=False, **kwargs):
+    if created:
+        Token.objects.create(user=instance)
 class Film(models.Model):
-    tytul = models.CharField(max_length=200)
-    rezyser = models.CharField(max_length=100)
-    rok_produkcji = models.IntegerField()
-    ocena = models.FloatField(max_length=2)
-    gatunki = models.CharField(max_length=200)
+    tytul = models.CharField(max_length=64, blank=False, unique=True)
+    rok = models.PositiveSmallIntegerField(default=2000)  # Dodaj wartość domyślną
+    opis = models.TextField(default="")
+    premiera = models.DateField(null=True, blank=True)
+    imdb_points = models.DecimalField(max_digits=4, decimal_places=2, null=True, blank=True)
+    owner = models.ForeignKey('auth.User', related_name='filmy', on_delete=models.CASCADE, null=True, blank=True)
+
     def __str__(self):
-        return self.tytul
+        return self.tytul_z_rokiem()
 
-    film_data = {
-        'tytul': 'Incepcja',
-        'rezyser': 'Christopher Nolan',
-        'rok_produkcji': 2010,
-        'ocena': 8.8,
-        'gatunki': ['Akcja', 'Sci-Fi', 'Thriller']
+    def tytul_z_rokiem(self):
+        return "{} ({})".format(self.tytul, str(self.rok))
+class ExtraInfo(models.Model):
+    GATUNEK = {
+        (0, 'Inne'),
+        (1, 'Horror'),
+        (2, 'Komedia'),
+        (3, 'Sci-fi'),
+        (4, 'Dramat')
     }
+    czas_trwania = models.PositiveSmallIntegerField(null=True, blank=True)
+    gatunek = models.PositiveSmallIntegerField(choices=GATUNEK, null=True, blank=True)
+    rezyser = models.CharField(max_length=50, blank=True, null=True)
+    filmy = models.OneToOneField(Film, on_delete=models.CASCADE, null=True, blank=True)
+    owner = models.ForeignKey(User, related_name='einfo', on_delete=models.CASCADE, null=True, blank=True)
 
-    # serializer = FilmModelSerializer(data=film_data)
-    # if serializer.is_valid():
-    #     film_json = serializer.data  # Serializacja do JSON
-    #     print(film_json)
-    #     # Deserializacja z powrotem do Pythona
-    #     przywrocony_film = serializer.create(serializer.validated_data)
-    #     print(przywrocony_film)
+    def __str__(self):
+        return self.reprezentacja()
 
-# # Przykładowy obiekt klasy Film
-# przykladowy_film = Film("Incepcja", "Christopher Nolan", 2010, 8.8, ["Akcja", "Sci-Fi", "Thriller"])
-#
-# # Serializacja obiektu do formatu JSON
-# film_json = json.dumps(przykladowy_film.__dict__)
-#
-# # Zapis serializowanego obiektu do zmiennej
-# film_json_zmienna = film_json
-#
-# # Deserializacja z JSON do obiektu klasy Film
-# film_dict = json.loads(film_json_zmienna)
-# przywrocony_film = Film(**film_dict)
-#
-# # Sprawdzenie wyników
-# print(film_json_zmienna, przywrocony_film.__dict__)
+    def reprezentacja(self):
+        for g in list(self.GATUNEK):
+            if g[0] == self.gatunek:
+                gok = g[1]
+        return "Id zestawu: {}, film: {}, gatunek: {}, czas trwania: {}, reżyser: {}".format(
+            self.id, self.filmy.tytul, gok, self.czas_trwania, self.rezyser)
+
+class Ocena(models.Model):
+    recenzja = models.TextField(default="", blank=True)
+    gwiazdki = models.PositiveSmallIntegerField(default=5)
+    film = models.ForeignKey(Film, on_delete=models.CASCADE, null=True, blank=True)
+    owner = models.ForeignKey(User, related_name='oceny', on_delete=models.CASCADE, null=True, blank=True)
+
+    def __str__(self):
+        rec = self.recenzja[:20] + ' ...'
+        return "Film: {}, gwiazdki: {}, recenzja: {}".format(self.film.tytul, str(self.gwiazdki), rec)
+
+class Aktor(models.Model):
+    imie = models.CharField(max_length=32)
+    nazwisko = models.CharField(max_length=32)
+    filmy = models.ManyToManyField(Film, blank=True)
+    owner = models.ForeignKey(User, related_name='aktorzy', on_delete=models.CASCADE, null=True, blank=True)
+
+    def __str__(self):
+        return "{} {}, gra w {} filmach z bazy danych".format(self.imie, self.nazwisko, str(self.filmy.count()))

@@ -1,30 +1,22 @@
-"""
-URL configuration for ZAI project.
-
-The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/4.2/topics/http/urls/
-Examples:
-Function views
-    1. Add an import:  from my_app import views
-    2. Add a URL to urlpatterns:  path('', views.home, name='home')
-Class-based views
-    1. Add an import:  from other_app.views import Home
-    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
-Including another URLconf
-    1. Import the include() function: from django.urls import include, path
-    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
-"""
-from MojaStrona import views
 from django.urls import path
-from .views import FilmView
-from .views import FilmList, FilmRetrieve,FilmCreateList, UserList, UserCreateList
-urlpatterns = [
-    path('wszystkie/', views.wszystkie),
-    path('filmy/', FilmList.as_view(), name='film-list'),
-    path('filmy/<int:pk>/', FilmRetrieve.as_view(), name='film-detail'),
-    path('filmy/create/', FilmCreateList.as_view(), name='film-create-list'),
-    path('api/film/', FilmView.as_view(), name='film-api'),
-    path('userlist/', UserList.as_view(), name='UserList'),
-    path('usercreatelist/', UserCreateList.as_view(), name='UserCreateList')
-]
+from .views import FilmCreateList, FilmRetrieveUpdateDestroy, ExtraInfoCreateList, ExtraInfoRetrieveUpdateDestroy, OcenaCreateList, OcenaRetrieveUpdateDestroy, AktorCreateList, AktorRetrieveUpdateDestroy, ListaUzytkownikow, UserRetrieveUpdateDestroy, api_root, statRezyserLiczbaFilmow, statFilmyLiczbaOcen, statFilmyBezOcen, statFilmyKategorieDobrySlaby, statFilmyGwiazdkiMaxMin
 
+
+urlpatterns = [
+    path('', api_root, name='api-root'),
+    path('filmy/', FilmCreateList.as_view(), name='film-list'),
+    path('filmy/<int:pk>/', FilmRetrieveUpdateDestroy.as_view(), name='film-detail'),
+    path('extrainfo/', ExtraInfoCreateList.as_view(), name='extrainfo-list'),
+    path('extrainfo/<int:pk>/', ExtraInfoRetrieveUpdateDestroy.as_view(), name='extrainfo-detail'),
+    path('ocena/', OcenaCreateList.as_view(), name='ocena-list'),
+    path('ocena/<int:pk>/', OcenaRetrieveUpdateDestroy.as_view(), name='ocena-detail'),
+    path('aktor/', AktorCreateList.as_view(), name='aktor-list'),
+    path('aktor/<int:pk>/', AktorRetrieveUpdateDestroy.as_view(), name='aktor-detail'),
+    path('user/', ListaUzytkownikow.as_view(), name='user-list'),
+    path('user/<int:pk>/', UserRetrieveUpdateDestroy.as_view(), name='user-detail'),
+    path('statRezyserLiczbaFilmow/', statRezyserLiczbaFilmow.as_view(), name='statRezyserLiczbaFilmow'),
+    path('statFilmyLiczbaOcen/', statFilmyLiczbaOcen.as_view(), name='statFilmyLiczbaOcen'),
+    path('statFilmyBezOcen/', statFilmyBezOcen.as_view(), name='statFilmyBezOcen'),
+    path('statFilmyDobrySlaby/', statFilmyKategorieDobrySlaby.as_view(), name='statFilmyKategorieDobrySlaby'),
+    path('statFilmyGwiazdkiMaxMin/', statFilmyGwiazdkiMaxMin.as_view(), name='statFilmyGwiazdkiMaxMin'),
+]

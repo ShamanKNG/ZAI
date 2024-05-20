@@ -16,9 +16,15 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
-from django.http import request
+from graphql_jwt.decorators import jwt_cookie
+from rest_framework.authtoken import views
+from django.views.decorators.csrf import csrf_exempt
+from graphene_django.views import GraphQLView
 
 urlpatterns = [
+    path('api-token-auth/', views.obtain_auth_token),
     path('admin/', admin.site.urls),
-    path('MojaStrona/', include('MojaStrona.urls')),
+    path('api/', include('MojaStrona.urls')),
+    path("graphql",  jwt_cookie(GraphQLView.as_view(graphiql=True))),
 ]
+
