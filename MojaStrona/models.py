@@ -2,27 +2,30 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.dispatch import receiver
 from django.db.models.signals import post_save
-from django.contrib.auth.models import User
 from rest_framework.authtoken.models import Token
 
 @receiver(post_save, sender=User)
 def create_auth_token(sender, instance=None, created=False, **kwargs):
     if created:
         Token.objects.create(user=instance)
+
 class Film(models.Model):
     tytul = models.CharField(max_length=64, blank=False, unique=True)
-    rok = models.PositiveSmallIntegerField(default=2000)  # Dodaj wartość domyślną
+    rok = models.PositiveSmallIntegerField(default=2000)
     opis = models.TextField(default="")
     premiera = models.DateField(null=True, blank=True)
     imdb_points = models.DecimalField(max_digits=4, decimal_places=2, null=True, blank=True)
     owner = models.ForeignKey('auth.User', related_name='filmy', on_delete=models.CASCADE, null=True, blank=True)
+
     class Meta:
-        ordering = ['tytul']  # Add default ordering
+        ordering = ['tytul']
+
     def __str__(self):
         return self.tytul_z_rokiem()
 
     def tytul_z_rokiem(self):
         return "{} ({})".format(self.tytul, str(self.rok))
+
 class ExtraInfo(models.Model):
     GATUNEK = {
         (0, 'Inne'),
@@ -34,10 +37,12 @@ class ExtraInfo(models.Model):
     czas_trwania = models.PositiveSmallIntegerField(null=True, blank=True)
     gatunek = models.PositiveSmallIntegerField(choices=GATUNEK, null=True, blank=True)
     rezyser = models.CharField(max_length=50, blank=True, null=True)
-    filmy = models.OneToOneField(Film, on_delete=models.CASCADE, null=True, blank=True)
+    filmy = models.OneToOneField(Film, on_delete=models.CASCADE, related_name='extrainfo', null=True, blank=True)
     owner = models.ForeignKey(User, related_name='einfo', on_delete=models.CASCADE, null=True, blank=True)
+
     class Meta:
-        ordering = ['rezyser']  # Add default ordering
+        ordering = ['rezyser']
+
     def __str__(self):
         return self.reprezentacja()
 
@@ -57,12 +62,14 @@ class Ocena(models.Model):
     def __str__(self):
         rec = self.recenzja[:20] + ' ...'
         return "Film: {}, gwiazdki: {}, recenzja: {}".format(self.film.tytul, str(self.gwiazdki), rec)
+
     class Meta:
-        ordering = ['-gwiazdki']  # Add default ordering
+        ordering = ['-gwiazdki']
+
 class Aktor(models.Model):
     imie = models.CharField(max_length=32)
     nazwisko = models.CharField(max_length=32)
-    filmy = models.ManyToManyField(Film, blank=True)
+    filmy = models.ManyToManyField(Film, related_name='aktorzy', blank=True)
     owner = models.ForeignKey(User, related_name='aktorzy', on_delete=models.CASCADE, null=True, blank=True)
 
     def __str__(self):
