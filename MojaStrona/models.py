@@ -16,7 +16,8 @@ class Film(models.Model):
     premiera = models.DateField(null=True, blank=True)
     imdb_points = models.DecimalField(max_digits=4, decimal_places=2, null=True, blank=True)
     owner = models.ForeignKey('auth.User', related_name='filmy', on_delete=models.CASCADE, null=True, blank=True)
-
+    class Meta:
+        ordering = ['tytul']  # Add default ordering
     def __str__(self):
         return self.tytul_z_rokiem()
 
@@ -35,7 +36,8 @@ class ExtraInfo(models.Model):
     rezyser = models.CharField(max_length=50, blank=True, null=True)
     filmy = models.OneToOneField(Film, on_delete=models.CASCADE, null=True, blank=True)
     owner = models.ForeignKey(User, related_name='einfo', on_delete=models.CASCADE, null=True, blank=True)
-
+    class Meta:
+        ordering = ['rezyser']  # Add default ordering
     def __str__(self):
         return self.reprezentacja()
 
@@ -55,7 +57,8 @@ class Ocena(models.Model):
     def __str__(self):
         rec = self.recenzja[:20] + ' ...'
         return "Film: {}, gwiazdki: {}, recenzja: {}".format(self.film.tytul, str(self.gwiazdki), rec)
-
+    class Meta:
+        ordering = ['-gwiazdki']  # Add default ordering
 class Aktor(models.Model):
     imie = models.CharField(max_length=32)
     nazwisko = models.CharField(max_length=32)

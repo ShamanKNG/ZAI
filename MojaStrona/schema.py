@@ -1,85 +1,51 @@
 import graphene
-import graphql_jwt
+from graphene import relay
 from graphene_django import DjangoObjectType
-from django.contrib.auth.models import User
+from graphene_django.filter import DjangoFilterConnectionField
+from graphql_relay import from_global_id, to_global_id
 from .models import Film, ExtraInfo, Ocena, Aktor
-from django.db.models import Count
-from graphql_jwt.decorators import login_required
 
-# Typy
 
-class FilmType(DjangoObjectType):
-    class Meta:
-        model = Film
-        fields = ("id", "tytul", "rok", "opis", "premiera", "imdb_points", "owner", "extrainfo")
 
-    stary_nowy_film = graphene.String(default_value="")
-    rok2 = graphene.Int()
-
-class UserType(DjangoObjectType):
-    class Meta:
-        model = User
-        fields = "__all__"
-
-class ExtraInfoType(DjangoObjectType):
+class ExtraInfoNode(DjangoObjectType):
     class Meta:
         model = ExtraInfo
-        convert_choices_to_enum = False
+        interfaces = (relay.Node, )
         fields = ("id", "czas_trwania", "gatunek", "rezyser", "filmy", "owner")
 
-class OcenaType(DjangoObjectType):
+class OcenaNode(DjangoObjectType):
     class Meta:
         model = Ocena
-        fields = "__all__"
+        interfaces = (relay.Node, )
+        fields = ("id", "gwiazdki", "recenzja", "film", "owner")
 
-class AktorType(DjangoObjectType):
+class AktorNode(DjangoObjectType):
     class Meta:
         model = Aktor
-        fields = "__all__"
+        interfaces = (relay.Node, )
+        fields = ("id", "imie", "nazwisko", "filmy")
 
-# Filtry
+class FilmNode(DjangoObjectType):
+    class Meta:
+        model = Film
+        filter_fields = {
+            'tytul': ['exact', 'contains', 'startswith'],
+            'rok': ['exact']
+        }
+        interfaces = (relay.Node, )
 
-class Filters(graphene.InputObjectType):
-    tytul_zawiera = graphene.String(default_value="")
-    rok_mniejszy_od = graphene.Int(default_value=2000)
-    nazwisko_aktora = graphene.String(default_value="")
+    extrainfo = graphene.List(ExtraInfoNode)
+    aktorzy = graphene.List(AktorNode)
 
-# Query
+    def resolve_extrainfo(self, info):
+        return self.extrainfo_set.all()
+
+    def resolve_aktorzy(self, info):
+        return self.aktor_set.all()
 
 class Query(graphene.ObjectType):
-    filmy = graphene.List(FilmType, filters=Filters())
-    aktorzy = graphene.List(AktorType, filters=Filters())
-
-    @login_required
-    def resolve_filmy(root, info, filters):
-        user = info.context.user
-        if not user.is_authenticated:
-            raise Exception('Nie dostarczono danych uwierzytelniających')
-
-        filmy = Film.objects.all()
-        for f in filmy:
-            if f.rok < filters.rok_mniejszy_od:
-                f.stary_nowy_film = "Stary film"
-            else:
-                f.stary_nowy_film = "Nowy film"
-        if len(filters.tytul_zawiera) > 0:
-            films = Film.objects.filter(tytul__contains=filters.tytul_zawiera)
-            for f in films:
-                if f.rok < filters.rok_mniejszy_od:
-                    f.stary_nowy_film = "Stary film"
-                else:
-                    f.stary_nowy_film = "Nowy film"
-            return films
-        return filmy
-
-    def resolve_aktorzy(root, info, filters):
-        aktorzy = Aktor.objects.all()
-        if len(filters.nazwisko_aktora) > 0:
-            aktor = Aktor.objects.filter(nazwisko__contains=filters.nazwisko_aktora)
-            return aktor
-        return aktorzy
-
-# Mutacje
+    filmy = DjangoFilterConnectionField(FilmNode)
+    film_wg_id = relay.Node.Field(FilmNode)
 
 class FilmCreateMutation(graphene.Mutation):
     class Arguments:
@@ -89,7 +55,7 @@ class FilmCreateMutation(graphene.Mutation):
         imdb_points = graphene.Decimal()
         owner_id = graphene.ID()
 
-    film = graphene.Field(FilmType)
+    film = graphene.Field(FilmNode)
 
     @classmethod
     def mutate(cls, root, info, tytul, opis, rok, imdb_points, owner_id):
@@ -106,11 +72,11 @@ class FilmUpdateMutation(graphene.Mutation):
         premiera = graphene.Date(default_value=None)
         owner_id = graphene.ID()
 
-    film = graphene.Field(FilmType)
+    film = graphene.Field(FilmNode)
 
     @classmethod
     def mutate(cls, root, info, id, tytul, opis, rok, imdb_points, premiera, owner_id):
-        film = Film.objects.get(pk=id)
+        film = Film.objects.get(pk=from_global_id(id)[1])
         film.opis = opis
         film.rok = rok
         film.premiera = premiera
@@ -123,20 +89,32 @@ class FilmDeleteMutation(graphene.Mutation):
     class Arguments:
         id = graphene.ID(required=True)
 
-    film = graphene.List(FilmType)
+    film = graphene.List(FilmNode)
 
     @classmethod
     def mutate(cls, root, info, id):
-        Film.objects.get(pk=id).delete()
+        Film.objects.get(pk=from_global_id(id)[1]).delete()
         filmy = Film.objects.all()
         return FilmDeleteMutation(film=filmy)
 
+class FilmUpdateMutationRelay(relay.ClientIDMutation):
+    class Input:
+        tytul = graphene.String(required=True)
+        id = graphene.ID()
+
+    film = graphene.Field(FilmNode)
+
+    @classmethod
+    def mutate_and_get_payload(cls, root, info, tytul, id):
+        film = Film.objects.get(pk=from_global_id(id)[1])
+        film.tytul = tytul
+        film.save()
+        return FilmUpdateMutationRelay(film=film)
+
 class Mutation(graphene.ObjectType):
-    create_film = FilmCreateMutation.Field()
     update_film = FilmUpdateMutation.Field()
+    create_film = FilmCreateMutation.Field()
     delete_film = FilmDeleteMutation.Field()
-    token_auth = graphql_jwt.ObtainJSONWebToken.Field()
-    verify_token = graphql_jwt.Verify.Field()
-    refresh_token = graphql_jwt.Refresh.Field()
+    update_film_relay = FilmUpdateMutationRelay.Field()
 
 schema = graphene.Schema(query=Query, mutation=Mutation)

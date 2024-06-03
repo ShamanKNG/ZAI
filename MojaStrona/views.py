@@ -205,3 +205,4 @@ class statFilmyBezOcen(generics.ListAPIView):
             'Statystyki_filmy_dobre_slabe': reverse('statFilmyKategorieDobrySlaby', request=request, format=format),
             'Statystyki_filmy_gwiazdki_max_min': reverse('statFilmyGwiazdkiMaxMin', request=request, format=format),
         })
+
